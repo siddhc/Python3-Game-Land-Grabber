@@ -3,16 +3,42 @@
 from game_constants import *
 from game_variables import *
 from game_classes import *
+import threading
 import pygame
 import time
 import numpy as np
+import socket
+import game_client
+import game_server
+import pickle
 
+has_game_begun = False
+
+received_message = None
+
+def receiving_threaded(player, screen):
+    global received_message
+    global has_game_begun
+    '''
+    Receives messages from the server, anytime. This thread is useful when data from server is expected anytime.
+    :param s: Socket object that connects to the server.
+    :return: None
+    '''
+    with player.connector:
+        while True:
+            received_message = player.network_receive() # When has_game_begun == True, received message = (player_id, selected_wall)
+            if not received_message:
+                break
+            if has_game_begun:
+                g_make_player_wall(screen, received_message[1], received_message[0])
 
 def g_initialize_parameters(screen, nc, nr):
+    HOST_CLIENT = '127.0.0.1'  # The server's hostname or IP address
+    PORT_CLIENT = 51232        # The port used by the server
     post_coordinates = g_get_post_coordinates(screen, nc, nr)
     wall_list = g_get_wall_list(screen, post_coordinates)
     g_draw_walls(screen, wall_list)
-    print(pygame.font.get_default_font())
+    # print(pygame.font.get_default_font())
     font1 = pygame.font.Font('freesansbold.ttf', 32)
     font2 = pygame.font.Font('freesansbold.ttf', 16)
     return post_coordinates, wall_list, (font1, font2)
@@ -85,7 +111,6 @@ def g_draw_posts(screen, post_coordinates):
 
 
 def g_show_wall_trace(screen, wall_list, mx, my):
-    global g_currently_selected_wall
     p = Point(mx, my)
     selected_wall = None
     min_distance = g_WIDTH
@@ -107,7 +132,6 @@ def g_make_player_wall(screen, selected_wall, player):
         player.number_of_walls += 1
     else:
         print("Wall already owned: play 'ding' sound")
-        pass
 
 
 def g_show_text(screen, display_text, font, x, y, fore_color, back_color):
@@ -129,3 +153,34 @@ def g_count_houses(screen, post_coordinates, font1, wall_list, player):
                 house_count += 1
                 g_show_text(screen, str(wall_l.owner.name), font1, wall_t.center.x, wall_l.center.y, wall_l.owner.color, g_color_WHITE)
     player.number_of_houses = house_count
+
+
+def g_get_player_details(choice):
+    g_player_name = input("Enter your name: ")
+    if choice == "host":
+        for i, col in enumerate(list_of_colors):
+            print(i+1, col)
+        g_player_color = list_of_color_variables[int(input("Enter colour number: "))-1]
+    else:
+        # Connect to server to ger available colours.
+        g_player_color = g_color_BLACK
+        pass
+    return g_player_name, g_player_color
+
+
+def g_get_host_or_join():
+    choice = input("Enter choice - '1 Host' or '2 Join': ")
+    if choice == "1":
+        return "host"
+    else:
+        return "join"
+
+
+def g_get_status_from_game_server(socket_object, thread_object, choice, maximum_players=0):
+    global received_message
+    if choice == "host":
+        network_send(socket_object, "host_"+str(maximum_players))
+        time.sleep(0.01)
+        data_from_server = received_message
+
+    return data_from_server

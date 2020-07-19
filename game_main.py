@@ -3,6 +3,9 @@ import time
 from game_constants import *
 from game_variables import *
 from game_functions import *
+import game_client
+import game_server
+import pickle
 
 #Initiate
 pygame.init()
@@ -12,13 +15,13 @@ screen_fill_color = g_color_WHITE
 g_SCREEN = pygame.display.set_mode((g_WIDTH, g_HEIGHT), pygame.HWSURFACE | pygame.DOUBLEBUF)
 pygame.display.set_caption(g_NAME)
 g_clock = pygame.time.Clock()
-
-
 g_post_coordinates, g_wall_list, g_fonts = g_initialize_parameters(g_SCREEN, g_c_posts_number, g_r_posts_number)
 
 #Game variables
 game_running = True
-me = Player(g_player_name, g_player_color)
+player_details_taken = False
+host_join_choice_made = False
+all_players_have_joined = False
 
 #Game loop
 while game_running:
@@ -38,6 +41,22 @@ while game_running:
             mouse_y = event.pos[1]
         elif event.type == pygame.MOUSEBUTTONDOWN:
             g_make_player_wall(g_SCREEN, g_currently_selected_wall, me)
+
+    if not host_join_choice_made:
+        choice = g_get_host_or_join()
+        host_join_choice_made = True
+
+    if not player_details_taken:
+        g_player_name, g_player_color = g_get_player_details(choice)
+        me = Player(g_player_name, g_player_color)
+        t = threading.Thread(target=receiving_threaded, args=(me, g_SCREEN))
+        t.start()
+        player_details_taken = True
+
+    while all_players_have_joined:
+        if choice == "host":
+            game_status = g_get_status_from_game_server(s, t, choice, maximum_players_allowed)
+
 
     # Draw posts
     g_draw_posts(g_SCREEN, g_post_coordinates)
