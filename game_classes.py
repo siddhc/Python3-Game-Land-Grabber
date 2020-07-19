@@ -43,16 +43,18 @@ class Wall:
 
 
 class Player:
-    def __init__(self, name, color):
+    def __init__(self, name):
         self.name = name
         self.ip_address = None
-        self.color = color
+        self.color = g_color_BLACK
         self.wall_width = 5
         self.number_of_walls = 0
         self.number_of_houses = 0
         self.id = None
         self.connector = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connector.connect((HOST_SERVER, PORT_SERVER))
+        self.number = None
+        self.type = None  # "host" or "join"
 
     def network_receive(self, size=1024):
         '''
@@ -67,7 +69,6 @@ class Player:
             print("EOFError. Program will continue.")
             return b''
         return message_object
-
 
     def network_send(self, message_object):
         '''

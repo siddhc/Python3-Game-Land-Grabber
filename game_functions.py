@@ -7,18 +7,19 @@ import threading
 import pygame
 import time
 import numpy as np
-import socket
-import game_client
-import game_server
-import pickle
+
+
+game_screen = None
 
 has_game_begun = False
 
 received_message = None
 
-def receiving_threaded(player, screen):
+
+def receiving_threaded(player):
     global received_message
     global has_game_begun
+    global game_screen
     '''
     Receives messages from the server, anytime. This thread is useful when data from server is expected anytime.
     :param s: Socket object that connects to the server.
@@ -26,11 +27,11 @@ def receiving_threaded(player, screen):
     '''
     with player.connector:
         while True:
-            received_message = player.network_receive() # When has_game_begun == True, received message = (player_id, selected_wall)
-            if not received_message:
-                break
             if has_game_begun:
-                g_make_player_wall(screen, received_message[1], received_message[0])
+                received_message = player.network_receive() # When has_game_begun == True, received message = (player_id, selected_wall)
+                if not received_message:
+                    break
+                g_make_player_wall(game_screen, received_message[1], received_message[0])
 
 def g_initialize_parameters(screen, nc, nr):
     HOST_CLIENT = '127.0.0.1'  # The server's hostname or IP address
@@ -155,17 +156,16 @@ def g_count_houses(screen, post_coordinates, font1, wall_list, player):
     player.number_of_houses = house_count
 
 
-def g_get_player_details(choice):
+def g_get_player_name():
     g_player_name = input("Enter your name: ")
-    if choice == "host":
-        for i, col in enumerate(list_of_colors):
-            print(i+1, col)
-        g_player_color = list_of_color_variables[int(input("Enter colour number: "))-1]
-    else:
-        # Connect to server to ger available colours.
-        g_player_color = g_color_BLACK
-        pass
-    return g_player_name, g_player_color
+    return g_player_name
+
+def g_get_player_number_and_color(player):
+    player.network_send(str(player.type)+"_SendPlayerNumber_"+str(maximum_players_allowed))
+    number = player.network_receive()
+    color = list_of_color_variables[number - 1]
+    print(color)
+    return number, color
 
 
 def g_get_host_or_join():
@@ -176,11 +176,12 @@ def g_get_host_or_join():
         return "join"
 
 
-def g_get_status_from_game_server(socket_object, thread_object, choice, maximum_players=0):
-    global received_message
-    if choice == "host":
-        network_send(socket_object, "host_"+str(maximum_players))
-        time.sleep(0.01)
-        data_from_server = received_message
-
+def g_number_of_players_from_game_server(player):
+    player.network_send("HowManyCurrentPlayers?")
+    data_from_server = player.network_receive()  # = number_of_connected_clients
     return data_from_server
+
+
+def conduit(screen):
+    global game_screen
+    game_screen = screen

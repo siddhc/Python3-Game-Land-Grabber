@@ -4,14 +4,13 @@ import socket
 import threading
 import time
 import pickle
-
-HOST_SERVER = ''  # Use '127.0.0.1' for localhost. Use '' for outside host.
-PORT_SERVER = 51232  # The port used by the server
+from game_constants import *
+from game_variables import *
 
 dictionary_of_connections = {}  # Maintains the record of connected clients
                                 # Structure: {client_addr_str: client_conn_object}
 number_of_connected_clients = 0
-
+number_of_ready_players = 0
 maximum_allowed_players = None
 
 type_of_player = ""
@@ -53,24 +52,41 @@ def threaded_client(conn, lock):
     global number_of_connected_clients
     global type_of_player
     global maximum_allowed_players
+    global number_of_ready_players
+
     all_players_joined = False
     with conn:
         while True:
             data = network_receive(conn)  # Message received from client.
             client_addr_str = str(conn.getpeername()[0])+'_'+str(conn.getpeername()[1])
-            print("Received <", data, "> from client <", client_addr_str,"> @ ", str(time.time()))
+            print("Received <", data, "> from client <", client_addr_str, "> @ ", str(time.time()))
             if not data:  # break if b'' is received from client.
-                if number_of_connected_clients == 1:  # The last client also disconnected
+                if not all_players_joined:
+                    number_of_connected_clients -= 1
+                elif number_of_connected_clients == 1:  # The last client also disconnected
                     number_of_connected_clients = 0
                     print("Client <", client_addr_str, "> disconnected. Number of connected clients = ", number_of_connected_clients)
                     dictionary_of_connections.clear()
                 break
             if not all_players_joined:
-                parts_of_data = len(data.split('_'))
-                type_of_player = parts_of_data[0]
-                maximum_allowed_players = int(parts_of_data[1])
+                parts_of_data = data.split('_')
                 print(f'server: parts_of_data = {parts_of_data}')
+                if parts_of_data[0] == "host" and parts_of_data[1] == "SendPlayerNumber":
+                    maximum_allowed_players = int(parts_of_data[2])
+                    print("Sending to <", client_addr_str, ">, number_of_connected_clients = ", number_of_connected_clients)
+                    network_send(conn, number_of_connected_clients)
+                if parts_of_data[0] == "join" and parts_of_data[1] == "SendPlayerNumber":
+                    print("Sending to <", client_addr_str, ">, number_of_connected_clients = ", number_of_connected_clients)
+                    network_send(conn, number_of_connected_clients)
+                if parts_of_data[0] == "HowManyCurrentPlayers?":
+                    network_send(conn, int(number_of_connected_clients))
+                    print("Sending number_of_connected_clients = <", number_of_connected_clients, "> to client <", client_addr_str)
+                if number_of_ready_players == maximum_allowed_players:
+                    network_send(conn, number_of_connected_clients)
+                    all_players_joined = True
+                    print("Server: all_players_joined = True")
             else:
+                print("Server: entering 'else' part")
                 for client_addr_str in dictionary_of_connections:
                     client_conn = dictionary_of_connections[client_addr_str]
                     if client_conn is not conn:  # Message of a client is sent to all other clients but not to itself.
