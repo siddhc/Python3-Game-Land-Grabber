@@ -8,18 +8,20 @@ import pygame
 import time
 import numpy as np
 
-
 game_screen = None
 
 has_game_begun = False
 
 received_message = None
 
+g_wall_list = {}
+
 
 def receiving_threaded(player):
     global received_message
     global has_game_begun
     global game_screen
+    global g_wall_list
     '''
     Receives messages from the server, anytime. This thread is useful when data from server is expected anytime.
     :param s: Socket object that connects to the server.
@@ -27,15 +29,21 @@ def receiving_threaded(player):
     '''
     with player.connector:
         while True:
-            received_message = player.network_receive() # When has_game_begun == True, received message = (player_id, selected_wall)
+            received_message = player.network_receive()  # When has_game_begun == True, received message = (player_id, selected_wall)
             print("receiving_threaded: received_message = ", received_message)
             if not received_message:
                 break
             if received_message == "EndGame":
                 break
-            g_make_player_wall(game_screen, received_message[1], received_message[0])
+            if received_message == b'':
+                pass
+            if isinstance(received_message, Wall):
+                received_message.owner = player
+                g_wall_list.update({received_message.name: received_message})
+
 
 def g_initialize_parameters(screen, nc, nr):
+    global g_wall_list
     HOST_CLIENT = '127.0.0.1'  # The server's hostname or IP address
     PORT_CLIENT = 51232        # The port used by the server
     post_coordinates = g_get_post_coordinates(screen, nc, nr)
@@ -44,7 +52,7 @@ def g_initialize_parameters(screen, nc, nr):
     # print(pygame.font.get_default_font())
     font1 = pygame.font.Font('freesansbold.ttf', 32)
     font2 = pygame.font.Font('freesansbold.ttf', 16)
-    return post_coordinates, wall_list, (font1, font2)
+    return post_coordinates, g_wall_list, (font1, font2)
 
 
 def g_get_post_coordinates(screen, nc, nr):
@@ -63,7 +71,7 @@ def g_get_post_coordinates(screen, nc, nr):
 
 
 def g_get_wall_list(screen, post_coordinates):
-    g_wall_list = {}
+    global g_wall_list
     for c in range(0, post_coordinates.shape[1]-1):
         for r in range(0, post_coordinates.shape[0]):
             x1 = post_coordinates[r][c][0]
@@ -90,6 +98,7 @@ def g_get_wall_list(screen, post_coordinates):
 def g_draw_walls(screen, wall_list):
     for wall in wall_list:
         wall_list[wall].draw(screen, mode="game_running")
+    return wall_list
 
 
 def g_draw_posts(screen, post_coordinates):
@@ -133,6 +142,12 @@ def g_make_player_wall(screen, selected_wall, player):
         selected_wall.width = player.wall_width
         selected_wall.draw(screen)
         player.number_of_walls += 1
+        name_of_player = str(player.name)
+        name_of_wall = str(selected_wall.name)
+        number_of_owner_of_wall = player.number
+        w = Wall(name_of_wall)
+        w.color = player.color
+        player.network_send(w)
     else:
         print("Wall already owned: play 'ding' sound")
 
@@ -162,6 +177,7 @@ def g_get_player_name():
     g_player_name = input("Enter your name: ")
     return g_player_name
 
+
 def g_get_player_number_and_color(player):
     player.network_send(str(player.type)+"_SendPlayerNumber_"+str(maximum_players_allowed))
     number = player.network_receive()
@@ -178,12 +194,17 @@ def g_get_host_or_join():
         return "join"
 
 
-def g_number_of_players_from_game_server(player):
+def g_get_number_of_players_from_game_server(player):
     player.network_send("HowManyCurrentPlayers?")
     data_from_server = player.network_receive()  # = number_of_connected_clients
     return data_from_server
 
 
-def conduit(screen):
+def g_update_wall_list(player_name, wall_name):
+    print("g_update_wall_list", player_name, wall_name)
+    pass
+
+def conduit(screen, wall_list):
     global game_screen
+    global list_of_walls
     game_screen = screen

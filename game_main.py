@@ -39,7 +39,7 @@ def main():
     while not all_players_have_joined:
         print("Checking with Server now ...")
         time.sleep(2)
-        current_number_of_players = g_number_of_players_from_game_server(me)
+        current_number_of_players = g_get_number_of_players_from_game_server(me)
         print(f'ch = {choice}, cp = {current_number_of_players}, mp = {maximum_players_allowed}')
         if current_number_of_players == maximum_players_allowed:
             all_players_have_joined = True
@@ -56,6 +56,8 @@ def main():
 
     #Game loop
     while game_running:
+
+        conduit(g_SCREEN, g_wall_list)
 
         # Clock management
         g_clock.tick(g_FPS)
@@ -81,7 +83,7 @@ def main():
         g_draw_posts(g_SCREEN, g_post_coordinates)
 
         # Draw walls
-        g_draw_walls(g_SCREEN, g_wall_list)
+        g_wall_list = g_draw_walls(g_SCREEN, g_wall_list)
 
         # Show wall trace
         g_currently_selected_wall = g_show_wall_trace(g_SCREEN, g_wall_list, mouse_x, mouse_y)

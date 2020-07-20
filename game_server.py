@@ -57,6 +57,7 @@ def threaded_client(conn, lock):
     all_players_joined = False
     with conn:
         while True:
+            print(f'(all_players_joined = {all_players_joined}')
             data = network_receive(conn)  # Message received from client.
             client_addr_str = str(conn.getpeername()[0])+'_'+str(conn.getpeername()[1])
             print("Received <", data, "> from client <", client_addr_str, "> @ ", str(time.time()))
@@ -83,11 +84,15 @@ def threaded_client(conn, lock):
                     print("Sending number_of_connected_clients = <", number_of_connected_clients, "> to client <", client_addr_str)
                 if parts_of_data[0] == "EndGame":
                     network_send(conn, "EndGame")
-                if number_of_ready_players == maximum_allowed_players:
+                if number_of_connected_clients == maximum_allowed_players:
                     network_send(conn, number_of_connected_clients)
                     all_players_joined = True
                     print("Server: all_players_joined = True")
             else:
+                if data == "EndGame":
+                    network_send(conn, "EndGame")
+                    number_of_connected_clients -= 1
+                    break
                 print("Server: entering 'else' part")
                 for client_addr_str in dictionary_of_connections:
                     client_conn = dictionary_of_connections[client_addr_str]
