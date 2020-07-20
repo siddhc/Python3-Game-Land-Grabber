@@ -81,6 +81,8 @@ def threaded_client(conn, lock):
                 if parts_of_data[0] == "HowManyCurrentPlayers?":
                     network_send(conn, int(number_of_connected_clients))
                     print("Sending number_of_connected_clients = <", number_of_connected_clients, "> to client <", client_addr_str)
+                if parts_of_data[0] == "EndGame":
+                    network_send(conn, "EndGame")
                 if number_of_ready_players == maximum_allowed_players:
                     network_send(conn, number_of_connected_clients)
                     all_players_joined = True

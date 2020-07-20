@@ -19,7 +19,7 @@ g_NAME = 'Line House'
 g_player_name = "Sid"
 g_player_color = g_color_BLUE
 HOST_SERVER = '127.0.0.1'  # The server's hostname or IP address
-PORT_SERVER = 51232  # The port used by the server
+PORT_SERVER = 51233  # The port used by the server
 
 # Custom settings
 g_c_posts_number = 5

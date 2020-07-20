@@ -1,8 +1,5 @@
 # Game variables
 
-mouse_x = 0
-mouse_y = 0
-
 g_players = {}
 g_current_player = 1
 

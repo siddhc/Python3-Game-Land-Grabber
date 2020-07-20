@@ -27,11 +27,13 @@ def receiving_threaded(player):
     '''
     with player.connector:
         while True:
-            if has_game_begun:
-                received_message = player.network_receive() # When has_game_begun == True, received message = (player_id, selected_wall)
-                if not received_message:
-                    break
-                g_make_player_wall(game_screen, received_message[1], received_message[0])
+            received_message = player.network_receive() # When has_game_begun == True, received message = (player_id, selected_wall)
+            print("receiving_threaded: received_message = ", received_message)
+            if not received_message:
+                break
+            if received_message == "EndGame":
+                break
+            g_make_player_wall(game_screen, received_message[1], received_message[0])
 
 def g_initialize_parameters(screen, nc, nr):
     HOST_CLIENT = '127.0.0.1'  # The server's hostname or IP address

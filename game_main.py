@@ -1,14 +1,9 @@
-import pygame
-import time
-from game_constants import *
-from game_variables import *
 from game_functions import *
-import game_client
-import game_server
-import pickle
 
 #Initiate
 screen_fill_color = g_color_WHITE
+mouse_x = 0
+mouse_y = 0
 
 #Game variables
 game_running = True
@@ -21,6 +16,8 @@ def main():
     global host_join_choice_made
     global player_details_taken
     global all_players_have_joined
+    global mouse_x
+    global mouse_y
 
     if not host_join_choice_made:
         choice = g_get_host_or_join()
@@ -30,7 +27,6 @@ def main():
         player_name = g_get_player_name()
         me = Player(player_name)
         t = threading.Thread(target=receiving_threaded, args=(me,))
-        t.start()
         me.type = choice
         me.number, me.color = g_get_player_number_and_color(me)
         current_number_of_players = me.number
@@ -49,6 +45,7 @@ def main():
             all_players_have_joined = True
 
     print("Entering game !")
+    t.start()
 
     #Game settings
     pygame.init()
@@ -70,6 +67,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_running = False
+                print("Caught in event handler")
             elif event.type == pygame.MOUSEMOTION:
                 mouse_x = event.pos[0]
                 mouse_y = event.pos[1]
@@ -79,28 +77,29 @@ def main():
                 else:
                     print("Game yet to start.")
 
+        # Draw posts
+        g_draw_posts(g_SCREEN, g_post_coordinates)
 
-        if all_players_have_joined:
-            # Draw posts
-            g_draw_posts(g_SCREEN, g_post_coordinates)
+        # Draw walls
+        g_draw_walls(g_SCREEN, g_wall_list)
 
-            # Draw walls
-            g_draw_walls(g_SCREEN, g_wall_list)
+        # Show wall trace
+        g_currently_selected_wall = g_show_wall_trace(g_SCREEN, g_wall_list, mouse_x, mouse_y)
 
-            # Show wall trace
-            g_currently_selected_wall = g_show_wall_trace(g_SCREEN, g_wall_list, mouse_x, mouse_y)
+        # Display texts
+        g_show_text(g_SCREEN, str(me.number_of_walls) + '_' + str(me.number_of_houses), g_fonts[0], 50, 25, me.color, g_color_WHITE)
 
-            # Display texts
-            g_show_text(g_SCREEN, str(me.number_of_walls) + '_' + str(me.number_of_houses), g_fonts[0], 50, 25, me.color, g_color_WHITE)
+        # Count houses
+        g_count_houses(g_SCREEN, g_post_coordinates, g_fonts[1], g_wall_list, me)
 
-            # Count houses
-            g_count_houses(g_SCREEN, g_post_coordinates, g_fonts[1], g_wall_list, me)
-
-            # Screen flip
-
+        # Screen flip
         pygame.display.flip()
 
     # Quit game
+    print("Reached t.join()")
+    me.network_send("EndGame")
+    t.join()
+    print("Reached pygame.quit()")
     pygame.quit()
 
 
